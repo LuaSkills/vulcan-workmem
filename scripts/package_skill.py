@@ -200,6 +200,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional base URL used to build the generated source metadata YAML.",
     )
+    parser.add_argument(
+        "--emit-source-yaml",
+        action="store_true",
+        help="Generate one source metadata YAML file for non-GitHub distribution channels.",
+    )
     parser.add_argument("--version", default=None, help="Semantic version without the leading v.")
     return parser.parse_args()
 
@@ -215,17 +220,18 @@ def main() -> int:
     manifest = load_manifest(root)
     version = resolve_version(manifest, args.version)
     package_path, checksum_path = build_package(root, out_dir, version)
-    source_path = build_source_metadata(
-        root,
-        out_dir,
-        version,
-        args.base_url,
-        package_path,
-        checksum_path,
-    )
     print(f"Package created: {package_path}")
     print(f"Checksums created: {checksum_path}")
-    print(f"Source metadata created: {source_path}")
+    if args.emit_source_yaml:
+        source_path = build_source_metadata(
+            root,
+            out_dir,
+            version,
+            args.base_url,
+            package_path,
+            checksum_path,
+        )
+        print(f"Source metadata created: {source_path}")
     return 0
 
 

@@ -59,14 +59,22 @@ python .\scripts\validate_skill.py
 python .\scripts\package_skill.py
 ```
 
-The packaging script now generates three artifacts under `dist/`:
+The default packaging script generates two artifacts under `dist/`:
 
 - `<skill-id>-v<version>-skill.zip`
 - `<skill-id>-v<version>-checksums.txt`
+
+For non-GitHub distribution channels, you can optionally generate one URL-install metadata file:
+
+```powershell
+python .\scripts\package_skill.py --emit-source-yaml
+```
+
+That optional command adds:
+
 - `<skill-id>-v<version>-source.yaml`
 
-The generated `source.yaml` is the URL-install metadata example.
-If you do not pass `--base-url`, it uses a placeholder URL that you can edit manually for local or self-hosted tests.
+If you do not pass `--base-url`, the generated `source.yaml` uses a placeholder URL that you can edit manually for local or self-hosted tests.
 
 GitHub validation:
 
@@ -99,10 +107,12 @@ python ./scripts/package_skill.py
 
 The helper scripts normalize the version into a `vX.Y.Z` tag and push it to `origin`.
 The packaging script treats `skill.yaml.version` as the release version source of truth and rejects mismatched tag or CLI versions.
-If you want the generated source metadata to be immediately usable, you can pass a base URL:
+GitHub release publication only uploads the zip package and checksum file.
+
+If you want to generate source metadata for non-GitHub channels, you can pass a base URL together with the explicit source-yaml flag:
 
 ```powershell
-python .\scripts\package_skill.py --base-url https://example.com/releases
+python .\scripts\package_skill.py --emit-source-yaml --base-url https://example.com/releases
 ```
 
 ## Release packaging
@@ -111,7 +121,6 @@ After the tag is pushed, the release workflow produces:
 
 - `<skill-id>-v<version>-skill.zip`
 - `<skill-id>-v<version>-checksums.txt`
-- `<skill-id>-v<version>-source.yaml`
 
 The zip file always expands to one top-level directory named exactly:
 
@@ -124,4 +133,4 @@ luaskills-demo-skill/
 - Runtime output is intentionally English-only.
 - Code comments inside source files follow the rule: English line first, Chinese line second.
 - The repository root itself is the skill root, and the skill id is the directory name.
-- The generated `source.yaml` is designed to be reused later for URL-based install flows, self-hosted package endpoints, and future skillhub-compatible metadata responses.
+- The optional `source.yaml` is reserved for URL-based install flows, self-hosted package endpoints, and future skillhub-compatible metadata responses rather than GitHub release publication.
