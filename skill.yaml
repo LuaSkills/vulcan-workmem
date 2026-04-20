@@ -1,5 +1,5 @@
 name: LuaSkills Demo Skill
-version: 0.1.1
+version: 0.1.2
 enable: true
 debug: false
 lancedb:
@@ -14,7 +14,7 @@ sqlite:
   slow_log_threshold_ms: 800
 help:
   main:
-    description: Main help node for the LuaSkills demo repository.
+    description: Main help node for the LuaSkills demo repository used in update smoke tests.
     file: help/help.md
   topics:
     - name: demo-status
