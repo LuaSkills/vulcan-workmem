@@ -5,12 +5,14 @@ A complete demo LuaSkill repository for testing package installation, GitHub rel
 ## What this repository demonstrates
 
 - the strict `skill.yaml` package layout
+- a required semantic `version` field in `skill.yaml`
 - a `dependencies.yaml` file with one skill-local `rg` dependency
 - multiple runtime entries under `runtime/`
 - help topics under `help/`
 - one overflow template under `overflow_templates/`
 - one resource file under `resources/`
 - GitHub Actions workflows for validation and release packaging
+- a tag-driven release workflow that only builds packages after a release tag is pushed
 
 ## Skill package layout
 
@@ -54,12 +56,44 @@ Local validation:
 
 ```powershell
 python .\scripts\validate_skill.py
-python .\scripts\package_skill.py --out-dir .\dist
+python .\scripts\package_skill.py
 ```
+
+GitHub validation:
+
+- pushes to `main` only run structure validation
+- pull requests only run structure validation
+- no release package is published from branch pushes
+
+## Tag-based release flow
+
+This repository uses a tag-driven release flow.
+
+Only a pushed tag that matches `v*` triggers package build and GitHub release publication.
+The tag must match `skill.yaml.version`.
+
+Recommended local release steps:
+
+```powershell
+python .\scripts\validate_skill.py
+python .\scripts\package_skill.py
+.\scripts\tag_release.ps1 0.1.0
+```
+
+Or on Unix-like shells:
+
+```bash
+python ./scripts/validate_skill.py
+python ./scripts/package_skill.py
+./scripts/tag_release.sh 0.1.0
+```
+
+The helper scripts normalize the version into a `vX.Y.Z` tag and push it to `origin`.
+The packaging script treats `skill.yaml.version` as the release version source of truth and rejects mismatched tag or CLI versions.
 
 ## Release packaging
 
-The release workflow produces:
+After the tag is pushed, the release workflow produces:
 
 - `<skill-id>-v<version>-skill.zip`
 - `<skill-id>-v<version>-checksums.txt`

@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -28,7 +27,7 @@ jobs:
         run: python ./scripts/validate_skill.py
 
       - name: Build release package
-        run: python ./scripts/package_skill.py --out-dir ./dist
+        run: python ./scripts/package_skill.py
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -37,7 +36,6 @@ jobs:
           path: dist/*
 
       - name: Publish GitHub release assets
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |

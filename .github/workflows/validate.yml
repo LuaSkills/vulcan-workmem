@@ -24,12 +24,3 @@ jobs:
 
       - name: Validate strict skill layout
         run: python ./scripts/validate_skill.py
-
-      - name: Build demo release package
-        run: python ./scripts/package_skill.py --out-dir ./dist
-
-      - name: Upload demo artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: luaskills-demo-skill-package
-          path: dist/*

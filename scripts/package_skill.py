@@ -22,25 +22,6 @@ def repo_root() -> Path:
 
 
 """
-Return one semantic version string from the GitHub tag or fallback input.
-返回一个语义化版本字符串，优先使用 GitHub 标签或回退输入。
-"""
-def resolve_version(cli_version: str | None) -> str:
-    if cli_version:
-        return cli_version
-
-    github_ref_name = Path.cwd().joinpath(".").anchor  # stable no-op path access
-    _ = github_ref_name
-
-    import os
-
-    ref_name = os.environ.get("GITHUB_REF_NAME", "").strip()
-    if ref_name.startswith("v") and len(ref_name) > 1:
-        return ref_name[1:]
-    return "0.1.0"
-
-
-"""
 Load the skill manifest from disk.
 从磁盘加载技能清单。
 """
@@ -50,6 +31,42 @@ def load_manifest(root: Path) -> dict:
     if not isinstance(payload, dict):
         raise RuntimeError("skill.yaml must contain one YAML object")
     return payload
+
+
+"""
+Return the semantic package version declared by the manifest.
+返回清单中声明的语义化包版本。
+"""
+def manifest_version(manifest: dict) -> str:
+    version = manifest.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise RuntimeError("skill.yaml must contain a non-empty version")
+    return version.strip()
+
+
+"""
+Resolve the effective package version and enforce it against CLI or GitHub tag inputs.
+解析最终打包版本，并强制要求其与命令行或 GitHub 标签输入保持一致。
+"""
+def resolve_version(manifest: dict, cli_version: str | None) -> str:
+    declared_version = manifest_version(manifest)
+
+    if cli_version and cli_version.strip() != declared_version:
+        raise RuntimeError(
+            f"--version must match skill.yaml version {declared_version}, got {cli_version.strip()}"
+        )
+
+    import os
+
+    ref_name = os.environ.get("GITHUB_REF_NAME", "").strip()
+    if ref_name:
+        expected_tag = f"v{declared_version}"
+        if ref_name != expected_tag:
+            raise RuntimeError(
+                f"GITHUB_REF_NAME must match {expected_tag}, got {ref_name}"
+            )
+
+    return declared_version
 
 
 """
@@ -127,7 +144,8 @@ def main() -> int:
     args = parse_args()
     root = repo_root()
     out_dir = (root / args.out_dir).resolve()
-    version = resolve_version(args.version)
+    manifest = load_manifest(root)
+    version = resolve_version(manifest, args.version)
     package_path, checksum_path = build_package(root, out_dir, version)
     print(f"Package created: {package_path}")
     print(f"Checksums created: {checksum_path}")

@@ -5,6 +5,7 @@ Validate the demo LuaSkill repository against the strict package rules.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -26,6 +27,19 @@ Raise one validation error when the condition is false.
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
+
+
+"""
+Return whether one version string follows strict semantic-version syntax.
+返回单个版本字符串是否满足严格的语义化版本语法。
+"""
+def is_valid_semver(value: str) -> bool:
+    pattern = re.compile(
+        r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+        r"(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?"
+        r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
+    )
+    return bool(pattern.fullmatch(value.strip()))
 
 
 """
@@ -70,6 +84,9 @@ Validate the skill manifest and entry references.
 def validate_manifest(root: Path) -> None:
     manifest = load_yaml(root / "skill.yaml")
     require("skill_id" not in manifest, "skill.yaml must not declare skill_id")
+    version = manifest.get("version")
+    require(isinstance(version, str) and version.strip(), "skill.yaml must declare a non-empty version")
+    require(is_valid_semver(version), "skill.yaml version must be a valid semantic version")
     entries = manifest.get("entries")
     require(isinstance(entries, list) and entries, "skill.yaml must declare at least one entry")
 

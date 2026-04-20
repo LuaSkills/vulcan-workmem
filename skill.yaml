@@ -1,4 +1,5 @@
 name: LuaSkills Demo Skill
+version: 0.1.0
 enable: true
 debug: false
 lancedb:
