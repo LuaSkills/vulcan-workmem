@@ -41,3 +41,4 @@ jobs:
           files: |
             dist/*.zip
             dist/*checksums.txt
+            dist/*source.yaml

@@ -70,6 +70,16 @@ def resolve_version(manifest: dict, cli_version: str | None) -> str:
 
 
 """
+Return a normalized base URL without a trailing slash.
+返回去除尾部斜杠后的规范化基础 URL。
+"""
+def normalize_base_url(base_url: str | None) -> str:
+    if base_url is None or not base_url.strip():
+        return "https://example.com/REPLACE-ME"
+    return base_url.strip().rstrip("/")
+
+
+"""
 Return the list of repository-relative paths included in the release package.
 返回发布包中应包含的仓库相对路径列表。
 """
@@ -126,12 +136,70 @@ def build_package(root: Path, out_dir: Path, version: str) -> tuple[Path, Path]:
 
 
 """
+Build one source metadata YAML file for URL-based installation and update tests.
+构建一个用于 URL 安装与更新测试的来源描述 YAML 文件。
+"""
+def build_source_metadata(
+    root: Path,
+    out_dir: Path,
+    version: str,
+    base_url: str,
+    package_path: Path,
+    checksum_path: Path,
+) -> Path:
+    manifest = load_manifest(root)
+    skill_name = root.name
+    display_name = manifest.get("name", skill_name)
+    if not isinstance(display_name, str) or not display_name:
+        raise RuntimeError("skill.yaml must contain a non-empty name")
+
+    source_name = f"{skill_name}-v{version}-source.yaml"
+    source_path = out_dir / source_name
+    normalized_base_url = normalize_base_url(base_url)
+    package_name = package_path.name
+    checksum_name = checksum_path.name
+    checksum_sha256 = checksum_path.read_text(encoding="utf-8").split()[0]
+
+    payload = {
+        "skill_id": skill_name,
+        "name": display_name,
+        "version": version,
+        "source": {
+            "kind": "url",
+            "locator": f"{normalized_base_url}/{source_name}",
+        },
+        "package": {
+            "url": f"{normalized_base_url}/{package_name}",
+            "sha256": checksum_sha256,
+            "filename": package_name,
+        },
+        "checksums": {
+            "url": f"{normalized_base_url}/{checksum_name}",
+            "filename": checksum_name,
+        },
+        "release": {
+            "tag": f"v{version}",
+        },
+    }
+    source_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=False),
+        encoding="utf-8",
+    )
+    return source_path
+
+
+"""
 Parse command-line arguments for the package builder.
 解析打包脚本使用的命令行参数。
 """
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Package one LuaSkill release zip.")
     parser.add_argument("--out-dir", default="dist", help="Output directory for release assets.")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help="Optional base URL used to build the generated source metadata YAML.",
+    )
     parser.add_argument("--version", default=None, help="Semantic version without the leading v.")
     return parser.parse_args()
 
@@ -147,8 +215,17 @@ def main() -> int:
     manifest = load_manifest(root)
     version = resolve_version(manifest, args.version)
     package_path, checksum_path = build_package(root, out_dir, version)
+    source_path = build_source_metadata(
+        root,
+        out_dir,
+        version,
+        args.base_url,
+        package_path,
+        checksum_path,
+    )
     print(f"Package created: {package_path}")
     print(f"Checksums created: {checksum_path}")
+    print(f"Source metadata created: {source_path}")
     return 0
 
 
