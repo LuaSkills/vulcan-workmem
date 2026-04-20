@@ -22,16 +22,6 @@ local function join_path(...)
   return table.concat(parts, path_separator())
 end
 
---- Return the parent directory of one path string.
---- 返回一个路径字符串的父目录。
---- @param path_text string
---- @return string
-local function parent_dir(path_text)
-  local separator = path_separator()
-  local normalized = tostring(path_text or ""):gsub("[/\\\\]+", separator)
-  return normalized:match("^(.*)" .. separator .. "[^" .. separator .. "]+$") or normalized
-end
-
 --- Return the normalized LuaSkills platform key used by the demo manifest.
 --- 返回当前演示清单使用的标准 LuaSkills 平台键。
 --- @return string
@@ -61,21 +51,16 @@ local function current_platform_key()
   return "linux-x64"
 end
 
---- Build the expected local rg binary path from the skill-local dependency layout.
---- 按技能私有依赖布局构造预期的本地 rg 二进制路径。
+--- Build the expected local rg binary path from the injected dependency root.
+--- 基于注入的依赖根路径构造预期的本地 rg 二进制路径。
 --- @return string
 local function expected_rg_binary()
-  local skill_dir = vulcan and vulcan.context and vulcan.context.skill_dir or ""
-  local skills_root = parent_dir(skill_dir)
-  local runtime_root = parent_dir(skills_root)
+  local tools_path = vulcan and vulcan.deps and vulcan.deps.tools_path or ""
   local platform_key = current_platform_key()
   local binary_name = platform_key:match("^windows") and "rg.exe" or "rg"
 
   return join_path(
-    runtime_root,
-    "dependencies",
-    "tools",
-    "luaskills-demo-skill",
+    tools_path,
     "rg",
     "14.1.1",
     platform_key,
