@@ -70,12 +70,12 @@ def resolve_version(manifest: dict, cli_version: str | None) -> str:
 
 
 """
-Return a normalized base URL without a trailing slash.
-返回去除尾部斜杠后的规范化基础 URL。
+Return a normalized release asset base URL without a trailing slash.
+返回去除尾部斜杠后的规范化发布资产基础 URL。
 """
-def normalize_base_url(base_url: str | None) -> str:
+def normalize_base_url(base_url: str | None, version: str) -> str:
     if base_url is None or not base_url.strip():
-        return "https://example.com/REPLACE-ME"
+        return f"https://github.com/LuaSkills/demo-skill/releases/download/v{version}"
     return base_url.strip().rstrip("/")
 
 
@@ -143,7 +143,7 @@ def build_source_metadata(
     root: Path,
     out_dir: Path,
     version: str,
-    base_url: str,
+    base_url: str | None,
     package_path: Path,
     checksum_path: Path,
 ) -> Path:
@@ -155,7 +155,7 @@ def build_source_metadata(
 
     source_name = f"{skill_name}-v{version}-source.yaml"
     source_path = out_dir / source_name
-    normalized_base_url = normalize_base_url(base_url)
+    normalized_base_url = normalize_base_url(base_url, version)
     package_name = package_path.name
     checksum_name = checksum_path.name
     checksum_sha256 = checksum_path.read_text(encoding="utf-8").split()[0]
@@ -198,7 +198,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--base-url",
         default=None,
-        help="Optional base URL used to build the generated source metadata YAML.",
+        help="Optional base URL used to build generated source metadata; defaults to the LuaSkills/demo-skill GitHub release URL.",
     )
     parser.add_argument(
         "--emit-source-yaml",

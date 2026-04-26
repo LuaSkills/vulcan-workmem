@@ -1,6 +1,6 @@
 # Demo Overflow Page
 
-The host paged this output for `luaskills-demo-skill`.
+The host paged this output for `demo-skill`.
 
 - content bytes: `{{content_bytes}}`
 - content lines: `{{content_lines}}`

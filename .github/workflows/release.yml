@@ -32,7 +32,7 @@ jobs:
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: luaskills-demo-skill-release
+          name: demo-skill-release
           path: dist/*
 
       - name: Publish GitHub release assets

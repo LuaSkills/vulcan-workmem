@@ -1,6 +1,6 @@
 # LuaSkills Demo Skill
 
-This repository is a complete demo package for LuaSkills.
+This `LuaSkills/demo-skill` repository is a complete demo package for LuaSkills.
 
 It is designed to validate:
 

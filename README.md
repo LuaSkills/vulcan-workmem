@@ -1,6 +1,6 @@
-# luaskills-demo-skill
+# demo-skill
 
-A complete demo LuaSkill repository for testing package installation, GitHub release packaging, version updates, uninstall behavior, and one no-op `rg` dependency.
+A complete demo LuaSkill repository at `LuaSkills/demo-skill` for testing package installation, GitHub release packaging, version updates, uninstall behavior, and one no-op `rg` dependency.
 
 ## What this repository demonstrates
 
@@ -17,7 +17,7 @@ A complete demo LuaSkill repository for testing package installation, GitHub rel
 ## Skill package layout
 
 ```text
-luaskills-demo-skill/
+demo-skill/
 ├─ skill.yaml
 ├─ dependencies.yaml
 ├─ runtime/
@@ -64,7 +64,7 @@ The default packaging script generates two artifacts under `dist/`:
 - `<skill-id>-v<version>-skill.zip`
 - `<skill-id>-v<version>-checksums.txt`
 
-For non-GitHub distribution channels, you can optionally generate one URL-install metadata file:
+For URL-based install and update tests, you can optionally generate one source metadata file:
 
 ```powershell
 python .\scripts\package_skill.py --emit-source-yaml
@@ -74,7 +74,7 @@ That optional command adds:
 
 - `<skill-id>-v<version>-source.yaml`
 
-If you do not pass `--base-url`, the generated `source.yaml` uses a placeholder URL that you can edit manually for local or self-hosted tests.
+If you do not pass `--base-url`, the generated `source.yaml` points to the matching `LuaSkills/demo-skill` GitHub release asset names for the current manifest version.
 
 GitHub validation:
 
@@ -94,7 +94,7 @@ Recommended local release steps:
 ```powershell
 python .\scripts\validate_skill.py
 python .\scripts\package_skill.py
-.\scripts\tag_release.ps1 0.1.0
+.\scripts\tag_release.ps1 0.1.3
 ```
 
 Or on Unix-like shells:
@@ -102,17 +102,17 @@ Or on Unix-like shells:
 ```bash
 python ./scripts/validate_skill.py
 python ./scripts/package_skill.py
-./scripts/tag_release.sh 0.1.0
+./scripts/tag_release.sh 0.1.3
 ```
 
 The helper scripts normalize the version into a `vX.Y.Z` tag and push it to `origin`.
 The packaging script treats `skill.yaml.version` as the release version source of truth and rejects mismatched tag or CLI versions.
 GitHub release publication only uploads the zip package and checksum file.
 
-If you want to generate source metadata for non-GitHub channels, you can pass a base URL together with the explicit source-yaml flag:
+If you want to generate source metadata with an explicit release asset URL, pass a base URL together with the source-yaml flag:
 
 ```powershell
-python .\scripts\package_skill.py --emit-source-yaml --base-url https://example.com/releases
+python .\scripts\package_skill.py --emit-source-yaml --base-url https://github.com/LuaSkills/demo-skill/releases/download/v0.1.3
 ```
 
 ## Fork and publish flow
@@ -127,7 +127,7 @@ If you want to publish your own skill based on this demo, use this recommended f
 4. Update `skill.yaml`:
    - set `name` to your display name
    - set `version` to your first release version
-5. Update runtime, help, README, and resource files if they still mention `luaskills-demo-skill`.
+5. Update runtime, help, README, and resource files if they still mention `demo-skill` or `LuaSkills/demo-skill`.
 6. Run local validation:
 
 ```powershell
@@ -138,13 +138,13 @@ python .\scripts\package_skill.py
 7. Tag and push your release:
 
 ```powershell
-.\scripts\tag_release.ps1 0.1.0
+.\scripts\tag_release.ps1 0.1.3
 ```
 
 Important notes:
 
 - The LuaSkill runtime identity comes from the packaged top-level directory name, not from the GitHub repository name alone.
-- If you only rename the GitHub repository but keep the packaged skill directory as `luaskills-demo-skill`, the installed `skill_id` still remains `luaskills-demo-skill`.
+- If you only rename the GitHub repository but keep the packaged skill directory as `demo-skill`, the installed `skill_id` still remains `demo-skill`.
 - Always make sure the package root directory, release asset names, and documentation all match your final skill id before publishing.
 
 ## Release packaging
@@ -157,7 +157,7 @@ After the tag is pushed, the release workflow produces:
 The zip file always expands to one top-level directory named exactly:
 
 ```text
-luaskills-demo-skill/
+demo-skill/
 ```
 
 ## Notes

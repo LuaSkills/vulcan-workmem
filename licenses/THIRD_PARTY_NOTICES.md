@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This demo repository declares one optional tool dependency:
+The `LuaSkills/demo-skill` repository declares one optional tool dependency:
 
 - `rg` from the `BurntSushi/ripgrep` GitHub release distribution
 

@@ -58,9 +58,9 @@ local function build_status_payload(args)
 
   return {
     ok = true,
-    skill_id = "luaskills-demo-skill",
+    skill_id = "demo-skill",
     skill_name = "LuaSkills Demo Skill",
-    skill_version = "0.1.0",
+    skill_version = "0.1.3",
     timestamp = utc_timestamp(),
     caller = display_name,
     skill_dir = current_skill_dir(),
