@@ -1,63 +1,167 @@
-# demo-skill
+# Vulcan WorkMem
 
-A complete demo LuaSkill repository at `LuaSkills/demo-skill` for testing package installation, GitHub release packaging, version updates, uninstall behavior, and one no-op `rg` dependency.
+Simplified Chinese: [README.zh-CN.md](README.zh-CN.md)
 
-## LuaSkill development manual
+`Vulcan WorkMem` is an explicit checkpoint and recovery memory layer for AI coding agents.
 
-For LuaSkill runtime APIs, package rules, and development conventions, see the official development manuals:
+It is not automatic long-term memory, and it does not try to guess how much model context remains. Its job is narrower and more practical: when a user, host, project rule, resume flow, or handoff explicitly asks for durable task state, WorkMem stores compact checkpoints that an agent can recall later.
 
-- [Lua Skill Development Manual (English)](https://github.com/LuaSkills/luaskills/blob/main/docs/skill-development.md)
-- [Lua Skill 开发手册（中文）](https://github.com/LuaSkills/luaskills/blob/main/docs/zh-CN/skill-development.md)
+**WorkMem helps agents recover task state without turning the active conversation into a memory dump.**
 
-## What this repository demonstrates
+The current LuaSkills naming model uses the canonical `skill_id-entry_name` form, so the recommended tool names are:
 
-- the strict `skill.yaml` package layout
-- a required semantic `version` field in `skill.yaml`
-- a `dependencies.yaml` file with one skill-local `rg` dependency
-- multiple runtime entries under `runtime/`
-- help topics under `help/`
-- one overflow template under `overflow_templates/`
-- one resource file under `resources/`
-- GitHub Actions workflows for validation and release packaging
-- a tag-driven release workflow that only builds packages after a release tag is pushed
+- `vulcan-workmem-task-create`
+- `vulcan-workmem-set`
+- `vulcan-workmem-list`
+- `vulcan-workmem-get`
+- `vulcan-workmem-get-all`
+- `vulcan-workmem-delete`
+- `vulcan-workmem-task-list`
+- `vulcan-workmem-task-close`
 
-## Skill package layout
+Some MCP clients or host bindings may expose the same tools with underscores, such as `vulcan_workmem_set`. That is only a naming difference at the exposure layer; the semantics still map to the same WorkMem entries.
+
+In one sentence:
+
+**Create an explicit task checkpoint, write compact facts, recall only what is needed, and close the task when it is done.**
+
+## What Problem It Solves
+
+AI coding agents often lose useful working state when:
+
+- A conversation is compressed.
+- A task is resumed after a long pause.
+- Work is handed from one agent or session to another.
+- A user wants a durable checkpoint before a risky or multi-step phase.
+- A project has stable task memory rules outside the current prompt.
+
+Without WorkMem, agents tend to recover by re-reading files, re-running searches, or relying on a compressed summary that may omit important decisions. That is wasteful and sometimes risky.
+
+`Vulcan WorkMem` fills the gap with a small, explicit memory protocol:
+
+- It stores project-scoped task nodes in SQLite through the LuaSkills runtime.
+- It encourages compact facts instead of full logs or source dumps.
+- It makes recall selective by listing tags before reading content.
+- It separates task lifecycle from the long-lived `VULCAN_WORKMEM_ID`.
+- It keeps memory use deliberate instead of automatic.
+
+## When To Use
+
+Use WorkMem when:
+
+- The user explicitly asks to use WorkMem.
+- Project instructions contain a saved `VULCAN_WORKMEM_ID`.
+- A task is being resumed from a known WorkMem ID.
+- Handoff or checkpoint behavior is requested.
+- The host or user indicates that context compression is about to happen.
+
+Do not trigger WorkMem only because a task is complex, long, or multi-file. MCP hosts generally cannot expose remaining model context, and the agent should not guess context pressure.
+
+## Core Tools
+
+### `vulcan-workmem-task-create`
+
+Create or resume one project-scoped WorkMem task.
+
+Use this at the start of an explicitly remembered task. If an existing `VULCAN_WORKMEM_ID` is available, pass it through `workmem_id`; otherwise omit it only when a new ID should be generated.
+
+After every successful create call, the agent must visibly tell the user the active `VULCAN_WORKMEM_ID` and mark it strongly enough to survive context compression.
+
+### `vulcan-workmem-set`
+
+Write compact task nodes.
+
+Good node content includes file summaries, decisions, risks, progress, todos, validation summaries, and stable recovery checkpoints. Do not store full source files, full command logs, or long narrative notes.
+
+Supported node types:
+
+- `note`
+- `file_summary`
+- `decision`
+- `todo`
+- `progress`
+- `risk`
+- `checkpoint`
+- `tool_result`
+
+### `vulcan-workmem-list`
+
+List stored node tags without expanding full content.
+
+Use this first on resume or after compression so the agent can choose which tags to recall instead of dumping everything into context.
+
+### `vulcan-workmem-get`
+
+Read selected tags, or omit `tags` when a compact task summary is enough.
+
+This is the normal recall path after `list`.
+
+### `vulcan-workmem-get-all`
+
+Recall every node for one task.
+
+Use this only for full recovery, handoff, audit, or explicit full recall requests.
+
+### `vulcan-workmem-delete`
+
+Delete selected stale tags from one task.
+
+### `vulcan-workmem-task-list`
+
+List remembered task names under one `VULCAN_WORKMEM_ID`.
+
+Use this when the ID is known but the task name is not.
+
+### `vulcan-workmem-task-close`
+
+Close one task and remove task-scoped nodes.
+
+Closing a task does not invalidate the long-lived `VULCAN_WORKMEM_ID`.
+
+## Workflow
+
+1. Read the WorkMem help flow when WorkMem is needed:
 
 ```text
-demo-skill/
-├─ skill.yaml
-├─ dependencies.yaml
-├─ runtime/
-├─ help/
-├─ overflow_templates/
-├─ resources/
-├─ licenses/
-├─ scripts/
-└─ .github/workflows/
+skill=vulcan-workmem
+flow=main
 ```
 
-## Demo tools
+2. Start or resume an explicitly remembered task with `vulcan-workmem-task-create`.
+3. Tell the user the active `VULCAN_WORKMEM_ID`.
+4. Save durable checkpoints with `vulcan-workmem-set`.
+5. On resume, call `vulcan-workmem-list` before selected `vulcan-workmem-get`.
+6. Use `vulcan-workmem-get-all` only for full recovery or explicit requests.
+7. Close completed task memory with `vulcan-workmem-task-close`.
 
-- `demo-status`
-  - returns stable runtime diagnostics for installation and lifecycle testing
-- `rg-check`
-  - reports the expected local `rg` dependency path and runs `rg --version` when the file exists
-- `overflow-demo`
-  - returns paged output and a skill-local overflow template hint
+## Repository Notes
 
-## Demo dependency
+This repository is the standalone source repository for the `vulcan-workmem` LuaSkill package. It maps to the published skill package used by the LuaSkills runtime:
 
-The repository declares one skill-local `rg` dependency in `dependencies.yaml`.
+- `runtime/`: LuaSkill tool entries and shared WorkMem runtime logic
+- `help/`: strict help flow for AI-facing WorkMem workflow guidance
+- `attachments/`: Codex skill workflow attachment for hosts that import agent instructions
+- `overflow_templates/`: reserved local overflow-template directory
+- `resources/`: reserved resource directory
+- `licenses/`: third-party notices
+- `scripts/`: validation, packaging, and release helpers
 
-The dependency is intentionally non-essential:
+This repository is no longer maintained as a demo skill. It is the release source for `vulcan-workmem`. Releases generate the standard LuaSkill artifacts:
 
-- it is useful for testing install and uninstall behavior
-- it is safe to skip when network downloads are disabled
-- the `rg-check` tool can still return a diagnostic report when `rg` is missing
+- `vulcan-workmem-v{version}-skill.zip`
+- `vulcan-workmem-v{version}-checksums.txt`
 
-## Validation
+The top-level directory inside the zip must be the runtime skill name:
 
-This repository includes one validation workflow and one release workflow.
+```text
+vulcan-workmem/
+```
+
+## Dependencies And Artifacts
+
+`dependencies.yaml` declares runtime dependencies. Currently, `vulcan-workmem` declares no external tool, Lua, or FFI dependencies.
+
+WorkMem relies on the SQLite capability provided by the LuaSkills host runtime.
 
 Local validation:
 
@@ -66,122 +170,36 @@ python .\scripts\validate_skill.py
 python .\scripts\package_skill.py
 ```
 
-The default packaging script generates two artifacts under `dist/`:
-
-- `<skill-id>-v<version>-skill.zip`
-- `<skill-id>-v<version>-checksums.txt`
-
-For URL-based install and update tests, you can optionally generate one source metadata file:
+Optional source metadata:
 
 ```powershell
 python .\scripts\package_skill.py --emit-source-yaml
 ```
 
-That optional command adds:
+The generated metadata points to the matching `LuaSkills/vulcan-workmem` GitHub Release assets unless `--base-url` is provided.
 
-- `<skill-id>-v<version>-source.yaml`
+## Release Flow
 
-If you do not pass `--base-url`, the generated `source.yaml` points to the matching `LuaSkills/demo-skill` GitHub release asset names for the current manifest version.
-
-GitHub validation:
-
-- pushes to `main` do not trigger GitHub Actions automatically
-- pull requests only run structure validation
-- no release package is published from branch pushes
-
-## Tag-based release flow
-
-This repository uses a tag-driven release flow.
-
-Only a pushed tag that matches `v*` triggers package build and GitHub release publication.
-The tag must match `skill.yaml.version`.
+Releases are tag-driven. A pushed tag matching `v*` triggers the release workflow, and the tag must match `skill.yaml.version`.
 
 Recommended local release steps:
 
 ```powershell
 python .\scripts\validate_skill.py
 python .\scripts\package_skill.py
-.\scripts\tag_release.ps1 0.1.3
+.\scripts\tag_release.ps1 0.1.0
 ```
 
-Or on Unix-like shells:
+Unix-like shell:
 
 ```bash
 python ./scripts/validate_skill.py
 python ./scripts/package_skill.py
-./scripts/tag_release.sh 0.1.3
+./scripts/tag_release.sh 0.1.0
 ```
 
-The helper scripts normalize the version into a `vX.Y.Z` tag and push it to `origin`.
-The packaging script treats `skill.yaml.version` as the release version source of truth and rejects mismatched tag or CLI versions.
-GitHub release publication only uploads the zip package and checksum file.
+## One-Sentence Summary
 
-If you want to generate source metadata with an explicit release asset URL, pass a base URL together with the source-yaml flag:
+**If ordinary memory tries to remember everything, `Vulcan WorkMem` remembers only explicit checkpoints that help an agent resume, hand off, or recover after compression.**
 
-```powershell
-python .\scripts\package_skill.py --emit-source-yaml --base-url https://github.com/LuaSkills/demo-skill/releases/download/v0.1.3
-```
-
-## Use this demo as your own skill repository
-
-This repository is intended to be forked as the starting point for a real LuaSkill package.
-
-Recommended first-time setup:
-
-1. Fork this repository from GitHub.
-2. In the fork form, set `Repository name` to your final skill id.
-   - The repository name should match `^[a-z]([a-z0-9-]*[a-z0-9])?$`.
-   - Use lowercase letters, numbers, and single hyphen-separated words, such as `my-skill` or `demo-tools`.
-3. Set `Description` to a short description of your own skill.
-4. Click `Create fork`.
-5. Open the forked repository settings and choose `Leave fork network` so the new repository becomes an independent skill repository.
-6. Clone your own repository:
-
-```powershell
-git clone https://github.com/<your-org-or-user>/<your-skill-id>.git
-cd <your-skill-id>
-```
-
-7. Start replacing the demo content with your own skill implementation.
-8. Update `skill.yaml`:
-   - set `name` to your display name
-   - set `version` to your first release version
-9. Update runtime, help, README, and resource files if they still mention `demo-skill` or `LuaSkills/demo-skill`.
-10. Run local validation:
-
-```powershell
-python .\scripts\validate_skill.py
-python .\scripts\package_skill.py
-```
-
-11. Tag and push your release:
-
-```powershell
-.\scripts\tag_release.ps1 0.1.3
-```
-
-Important notes:
-
-- The LuaSkill runtime identity comes from the packaged top-level directory name, not from the GitHub repository name alone.
-- If you only rename the GitHub repository but keep the packaged skill directory as `demo-skill`, the installed `skill_id` still remains `demo-skill`.
-- Always make sure the package root directory, release asset names, and documentation all match your final skill id before publishing.
-
-## Release packaging
-
-After the tag is pushed, the release workflow produces:
-
-- `<skill-id>-v<version>-skill.zip`
-- `<skill-id>-v<version>-checksums.txt`
-
-The zip file always expands to one top-level directory named exactly:
-
-```text
-demo-skill/
-```
-
-## Notes
-
-- Runtime output is intentionally English-only.
-- Code comments inside source files follow the rule: English line first, Chinese line second.
-- The repository root itself is the skill root, and the skill id is the directory name.
-- The optional `source.yaml` is reserved for URL-based install flows, self-hosted package endpoints, and future skillhub-compatible metadata responses rather than GitHub release publication.
+**WorkMem is not automatic memory. It is deliberate task recovery infrastructure for the agent era.**

@@ -75,7 +75,7 @@ Return a normalized release asset base URL without a trailing slash.
 """
 def normalize_base_url(base_url: str | None, version: str) -> str:
     if base_url is None or not base_url.strip():
-        return f"https://github.com/LuaSkills/demo-skill/releases/download/v{version}"
+        return f"https://github.com/LuaSkills/vulcan-workmem/releases/download/v{version}"
     return base_url.strip().rstrip("/")
 
 
@@ -88,7 +88,9 @@ def collect_package_paths(root: Path) -> list[Path]:
         "skill.yaml",
         "dependencies.yaml",
         "README.md",
+        "README.zh-CN.md",
         "LICENSE",
+        "attachments",
         "runtime",
         "help",
         "overflow_templates",
@@ -198,7 +200,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--base-url",
         default=None,
-        help="Optional base URL used to build generated source metadata; defaults to the LuaSkills/demo-skill GitHub release URL.",
+        help="Optional base URL used to build generated source metadata; defaults to the LuaSkills/vulcan-workmem GitHub release URL.",
     )
     parser.add_argument(
         "--emit-source-yaml",
