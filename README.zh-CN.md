@@ -42,7 +42,7 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 - 通过 LuaSkills 运行时把项目级任务节点保存到 SQLite。
 - 鼓励保存紧凑事实，而不是完整日志或源码倾倒。
 - 先列出 tag，再按需读取内容，避免一次性污染上下文。
-- 将任务生命周期和长期 `VULCAN_WORKMEM_ID` 分离。
+- 将任务生命周期和长期 `LUASKILL_SID` 分离。
 - 让记忆使用保持显式，而不是自动触发。
 
 ## 什么时候使用
@@ -50,8 +50,8 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 适合使用 WorkMem 的情况：
 
 - 用户明确要求使用 WorkMem。
-- 项目说明中已经包含保存过的 `VULCAN_WORKMEM_ID`。
-- 任务正在从已知 WorkMem ID 恢复。
+- 项目说明中已经包含保存过的 `LUASKILL_SID`。
+- 任务正在从已知 LuaSkills 托管身份恢复。
 - 用户请求交接或 checkpoint 行为。
 - 宿主或用户明确提示即将发生上下文压缩。
 
@@ -63,9 +63,9 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 
 创建或恢复一个项目级 WorkMem 任务。
 
-在明确需要记忆的任务开始时使用。如果已有 `VULCAN_WORKMEM_ID`，通过 `workmem_id` 传入；只有在确实需要生成新 ID 时才省略它。
+在明确需要记忆的任务开始时使用。如果已有 `LUASKILL_SID`，通过 `LUASKILL_SID` 传入；只有在确实需要生成新的公开身份时才省略它。
 
-每次 create 成功后，智能体都必须在对话中显著告知用户当前 `VULCAN_WORKMEM_ID`，避免上下文压缩后丢失。
+使用公开身份的 create 成功后，智能体都必须在对话中显著告知用户当前 `LUASKILL_SID`，避免上下文压缩后丢失。宿主管理模式下，宿主可以注入并脱敏 `LUASKILL_SID`；智能体不应询问、打印或保存原始托管身份。
 
 ### `vulcan-workmem-set`
 
@@ -92,7 +92,7 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 
 ### `vulcan-workmem-get`
 
-读取指定 tag；省略 `tags` 时返回紧凑任务摘要。
+读取指定 tag；省略 `tags` 时返回最多 8 条最新紧凑节点预览。
 
 这是 `list` 之后的常规召回路径。
 
@@ -108,7 +108,7 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 
 ### `vulcan-workmem-task-list`
 
-列出一个 `VULCAN_WORKMEM_ID` 下已有的任务名。
+列出一个 `LUASKILL_SID` 下已有的任务名。
 
 适用于已知 ID 但不知道任务名的情况。
 
@@ -116,7 +116,7 @@ AI 编程智能体经常会在这些场景里丢失有用的工作状态：
 
 关闭一个任务并移除任务级节点。
 
-关闭任务不会使长期 `VULCAN_WORKMEM_ID` 失效。
+关闭最后一个任务时可能清理内部空身份行，但不会使已保存的长期 `LUASKILL_SID` 失效。
 
 ## 工作流
 
@@ -128,7 +128,7 @@ flow=main
 ```
 
 2. 用 `vulcan-workmem-task-create` 启动或恢复一个显式记忆任务。
-3. 告知用户当前 `VULCAN_WORKMEM_ID`。
+3. 告知用户当前公开 `LUASKILL_SID`。
 4. 用 `vulcan-workmem-set` 保存 durable checkpoints。
 5. 恢复时先调用 `vulcan-workmem-list`，再按需调用 `vulcan-workmem-get`。
 6. 仅在完整恢复或用户明确要求时使用 `vulcan-workmem-get-all`。
@@ -150,6 +150,7 @@ flow=main
 
 - `vulcan-workmem-v{version}-skill.zip`
 - `vulcan-workmem-v{version}-checksums.txt`
+- `vulcan-workmem-v{version}-source.yaml`
 
 zip 内部顶层目录必须是运行时 skill 名称：
 
@@ -176,7 +177,7 @@ python .\scripts\package_skill.py
 python .\scripts\package_skill.py --emit-source-yaml
 ```
 
-默认生成的 metadata 指向 `LuaSkills/vulcan-workmem` GitHub Release 资产；如需其他分发渠道，可传入 `--base-url`。
+默认生成的 metadata 指向 `LuaSkills/vulcan-workmem` GitHub Release 资产；如需其他分发渠道，可传入 `--base-url`。GitHub release workflow 会将该 metadata 与 zip、checksums 资产一起生成并上传。
 
 ## 发布流程
 
@@ -186,16 +187,16 @@ python .\scripts\package_skill.py --emit-source-yaml
 
 ```powershell
 python .\scripts\validate_skill.py
-python .\scripts\package_skill.py
-.\scripts\tag_release.ps1 0.1.0
+python .\scripts\package_skill.py --emit-source-yaml
+.\scripts\tag_release.ps1 0.1.1
 ```
 
 Unix-like shell：
 
 ```bash
 python ./scripts/validate_skill.py
-python ./scripts/package_skill.py
-./scripts/tag_release.sh 0.1.0
+python ./scripts/package_skill.py --emit-source-yaml
+./scripts/tag_release.sh 0.1.1
 ```
 
 ## 一句话总结

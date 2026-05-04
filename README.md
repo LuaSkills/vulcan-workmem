@@ -42,7 +42,7 @@ Without WorkMem, agents tend to recover by re-reading files, re-running searches
 - It stores project-scoped task nodes in SQLite through the LuaSkills runtime.
 - It encourages compact facts instead of full logs or source dumps.
 - It makes recall selective by listing tags before reading content.
-- It separates task lifecycle from the long-lived `VULCAN_WORKMEM_ID`.
+- It separates task lifecycle from the long-lived `LUASKILL_SID`.
 - It keeps memory use deliberate instead of automatic.
 
 ## When To Use
@@ -50,8 +50,8 @@ Without WorkMem, agents tend to recover by re-reading files, re-running searches
 Use WorkMem when:
 
 - The user explicitly asks to use WorkMem.
-- Project instructions contain a saved `VULCAN_WORKMEM_ID`.
-- A task is being resumed from a known WorkMem ID.
+- Project instructions contain a saved `LUASKILL_SID`.
+- A task is being resumed from a known LuaSkills managed identity.
 - Handoff or checkpoint behavior is requested.
 - The host or user indicates that context compression is about to happen.
 
@@ -63,9 +63,9 @@ Do not trigger WorkMem only because a task is complex, long, or multi-file. MCP 
 
 Create or resume one project-scoped WorkMem task.
 
-Use this at the start of an explicitly remembered task. If an existing `VULCAN_WORKMEM_ID` is available, pass it through `workmem_id`; otherwise omit it only when a new ID should be generated.
+Use this at the start of an explicitly remembered task. If an existing `LUASKILL_SID` is available, pass it through `LUASKILL_SID`; otherwise omit it only when a new public identity should be generated.
 
-After every successful create call, the agent must visibly tell the user the active `VULCAN_WORKMEM_ID` and mark it strongly enough to survive context compression.
+After every successful create call with a public identity, the agent must visibly tell the user the active `LUASKILL_SID` and mark it strongly enough to survive context compression. In host-managed mode, the host may inject and redact `LUASKILL_SID`; agents should not ask for, print, or persist the raw managed identity.
 
 ### `vulcan-workmem-set`
 
@@ -92,7 +92,7 @@ Use this first on resume or after compression so the agent can choose which tags
 
 ### `vulcan-workmem-get`
 
-Read selected tags, or omit `tags` when a compact task summary is enough.
+Read selected tags, or omit `tags` when a latest compact node preview of up to 8 nodes is enough.
 
 This is the normal recall path after `list`.
 
@@ -108,7 +108,7 @@ Delete selected stale tags from one task.
 
 ### `vulcan-workmem-task-list`
 
-List remembered task names under one `VULCAN_WORKMEM_ID`.
+List remembered task names under one `LUASKILL_SID`.
 
 Use this when the ID is known but the task name is not.
 
@@ -116,7 +116,7 @@ Use this when the ID is known but the task name is not.
 
 Close one task and remove task-scoped nodes.
 
-Closing a task does not invalidate the long-lived `VULCAN_WORKMEM_ID`.
+Closing a task may clean the internal empty identity row when no tasks remain, but it does not invalidate a saved long-lived `LUASKILL_SID`.
 
 ## Workflow
 
@@ -128,7 +128,7 @@ flow=main
 ```
 
 2. Start or resume an explicitly remembered task with `vulcan-workmem-task-create`.
-3. Tell the user the active `VULCAN_WORKMEM_ID`.
+3. Tell the user the active public `LUASKILL_SID`.
 4. Save durable checkpoints with `vulcan-workmem-set`.
 5. On resume, call `vulcan-workmem-list` before selected `vulcan-workmem-get`.
 6. Use `vulcan-workmem-get-all` only for full recovery or explicit requests.
@@ -150,6 +150,7 @@ This repository is no longer maintained as a demo skill. It is the release sourc
 
 - `vulcan-workmem-v{version}-skill.zip`
 - `vulcan-workmem-v{version}-checksums.txt`
+- `vulcan-workmem-v{version}-source.yaml`
 
 The top-level directory inside the zip must be the runtime skill name:
 
@@ -176,7 +177,7 @@ Optional source metadata:
 python .\scripts\package_skill.py --emit-source-yaml
 ```
 
-The generated metadata points to the matching `LuaSkills/vulcan-workmem` GitHub Release assets unless `--base-url` is provided.
+The generated metadata points to the matching `LuaSkills/vulcan-workmem` GitHub Release assets unless `--base-url` is provided. The GitHub release workflow emits and uploads this metadata together with the zip and checksum assets.
 
 ## Release Flow
 
@@ -186,16 +187,16 @@ Recommended local release steps:
 
 ```powershell
 python .\scripts\validate_skill.py
-python .\scripts\package_skill.py
-.\scripts\tag_release.ps1 0.1.0
+python .\scripts\package_skill.py --emit-source-yaml
+.\scripts\tag_release.ps1 0.1.1
 ```
 
 Unix-like shell:
 
 ```bash
 python ./scripts/validate_skill.py
-python ./scripts/package_skill.py
-./scripts/tag_release.sh 0.1.0
+python ./scripts/package_skill.py --emit-source-yaml
+./scripts/tag_release.sh 0.1.1
 ```
 
 ## One-Sentence Summary

@@ -12,6 +12,11 @@ from pathlib import Path
 import yaml
 
 
+# Skill and entry identifiers must follow the LuaSkills package contract.
+# Skill 和入口标识符必须遵守 LuaSkills 包契约。
+IDENTIFIER_PATTERN = re.compile(r"^[a-z]([a-z0-9-]*[a-z0-9])?$")
+
+
 """
 Return the repository root that also acts as the skill root.
 返回同时作为技能根目录的仓库根目录。
@@ -40,6 +45,14 @@ def is_valid_semver(value: str) -> bool:
         r"(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$"
     )
     return bool(pattern.fullmatch(value.strip()))
+
+
+"""
+Return whether one skill or entry identifier follows the LuaSkills naming rule.
+返回单个 skill 或入口标识符是否满足 LuaSkills 命名规则。
+"""
+def is_valid_identifier(value: str) -> bool:
+    return bool(IDENTIFIER_PATTERN.fullmatch(value.strip()))
 
 
 """
@@ -84,6 +97,7 @@ Validate the skill manifest and entry references.
 def validate_manifest(root: Path) -> None:
     manifest = load_yaml(root / "skill.yaml")
     require("skill_id" not in manifest, "skill.yaml must not declare skill_id")
+    require(is_valid_identifier(root.name), "Repository directory name must be a valid skill_id")
     version = manifest.get("version")
     require(isinstance(version, str) and version.strip(), "skill.yaml must declare a non-empty version")
     require(is_valid_semver(version), "skill.yaml version must be a valid semantic version")
@@ -95,8 +109,26 @@ def validate_manifest(root: Path) -> None:
         entry_name = entry.get("name")
         lua_entry = entry.get("lua_entry")
         require(isinstance(entry_name, str) and entry_name, "Each entry requires a non-empty name")
+        require(is_valid_identifier(entry_name), f"Entry '{entry_name}' must follow LuaSkills identifier rules")
         require(isinstance(lua_entry, str) and lua_entry, f"Entry '{entry_name}' requires lua_entry")
         require((root / lua_entry).is_file(), f"Entry '{entry_name}' points to a missing file: {lua_entry}")
+
+        parameters = entry.get("parameters", [])
+        require(isinstance(parameters, list), f"Entry '{entry_name}' parameters must be a list")
+        luaskill_sid_parameter = None
+        for parameter in parameters:
+            require(isinstance(parameter, dict), f"Entry '{entry_name}' parameter must be one YAML object")
+            parameter_name = parameter.get("name")
+            require(parameter_name != "workmem_id", f"Entry '{entry_name}' must not expose deprecated workmem_id")
+            if parameter_name == "LUASKILL_SID":
+                luaskill_sid_parameter = parameter
+
+        require(luaskill_sid_parameter is not None, f"Entry '{entry_name}' must expose LUASKILL_SID")
+        expected_required = entry_name != "task-create"
+        require(
+            luaskill_sid_parameter.get("required") is expected_required,
+            f"Entry '{entry_name}' LUASKILL_SID required flag must be {expected_required}",
+        )
 
     help_block = manifest.get("help", {})
     main_help = help_block.get("main")

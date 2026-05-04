@@ -27,7 +27,7 @@ jobs:
         run: python ./scripts/validate_skill.py
 
       - name: Build release package
-        run: python ./scripts/package_skill.py
+        run: python ./scripts/package_skill.py --emit-source-yaml
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
@@ -41,3 +41,4 @@ jobs:
           files: |
             dist/*.zip
             dist/*checksums.txt
+            dist/*source.yaml
