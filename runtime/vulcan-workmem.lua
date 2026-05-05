@@ -27,9 +27,13 @@ local MAX_LUASKILL_SID_CHARS = 128
 -- 单次 set 允许的最大节点数量用于限制写入量和工具结果摘要。
 local MAX_BATCH_NODES = 30
 
--- Plugin-managed IDs are intentionally hidden from assistant-visible output.
--- 插件托管 ID 会从面向助手的输出中隐藏。
-local PLUGIN_MANAGED_PREFIX = "VMCP_PLUGINS_"
+-- Host-managed IDs are intentionally hidden from assistant-visible output.
+-- 宿主托管 ID 会从面向助手的输出中隐藏。
+local HOST_MANAGED_PREFIX = "LUASKILLS-SID-"
+
+-- Legacy plugin bridge IDs remain recognized during the contract migration window.
+-- 契约迁移窗口内仍继续识别旧插件桥接 ID。
+local LEGACY_PLUGIN_MANAGED_PREFIX = "VMCP_PLUGINS_"
 
 -- Supported action names intentionally use hyphen style because they double as AI-facing commands.
 -- 支持的 action 名称故意使用短横线风格，因为它们同时是面向 AI 的命令。
@@ -125,21 +129,23 @@ local function inline_code(value)
     return "`" .. text .. "`"
 end
 
---- Return true when the LUASKILL_SID is provided by a trusted plugin bridge.
---- 当 LUASKILL_SID 由可信插件桥接提供时返回 true。
+--- Return true when the LUASKILL_SID is provided by a trusted host-managed bridge.
+--- 当 LUASKILL_SID 由可信宿主管理桥接提供时返回 true。
 --- @param luaskill_sid string LuaSkills managed identity.
 --- @return boolean
-local function is_plugin_managed(luaskill_sid)
-    return tostring(luaskill_sid or ""):sub(1, #PLUGIN_MANAGED_PREFIX) == PLUGIN_MANAGED_PREFIX
+local function is_host_managed(luaskill_sid)
+    local text = tostring(luaskill_sid or "")
+    return text:sub(1, #HOST_MANAGED_PREFIX) == HOST_MANAGED_PREFIX
+        or text:sub(1, #LEGACY_PLUGIN_MANAGED_PREFIX) == LEGACY_PLUGIN_MANAGED_PREFIX
 end
 
---- Render a LUASKILL_SID while hiding plugin-managed secret-like values.
---- 渲染 LUASKILL_SID，同时隐藏插件托管的类密钥值。
+--- Render a LUASKILL_SID while hiding host-managed secret-like values.
+--- 渲染 LUASKILL_SID，同时隐藏宿主托管的类密钥值。
 --- @param luaskill_sid string LuaSkills managed identity.
 --- @return string
 local function display_luaskill_sid(luaskill_sid)
-    if is_plugin_managed(luaskill_sid) then
-        return "`plugin-managed`"
+    if is_host_managed(luaskill_sid) then
+        return "`host-managed`"
     end
     return inline_code(luaskill_sid)
 end
@@ -648,7 +654,7 @@ end
 --- @param updated_at string Current timestamp.
 --- @return string|nil
 local function ensure_task_namespace(luaskill_sid, task_name, updated_at)
-    local source = is_plugin_managed(luaskill_sid) and "plugin" or "provided"
+    local source = is_host_managed(luaskill_sid) and "host" or "provided"
     local err = upsert_workmem(luaskill_sid, source, updated_at)
     if err then
         return err
@@ -690,14 +696,14 @@ local function render_persistent_setup_hint(luaskill_sid)
     }, "\n")
 end
 
---- Render the plugin-managed setup hint without exposing the raw ID.
---- 渲染插件托管设置提示且不暴露原始 ID。
+--- Render the host-managed setup hint without exposing the raw ID.
+--- 渲染宿主管理设置提示且不暴露原始 ID。
 --- @return string
-local function render_plugin_hint()
+local function render_host_managed_hint()
     return table.concat({
-        "## Plugin-Managed Mode",
+        "## Host-Managed Mode",
         "",
-        "- The active LUASKILL_SID is injected by the host or plugin.",
+        "- The active LUASKILL_SID is injected by the host bridge.",
         "- Do not ask for, print, or persist the raw LUASKILL_SID.",
         "- Continue using the task name and node tags normally.",
     }, "\n")
@@ -733,7 +739,7 @@ local function action_task_create(request)
     end
 
     local updated_at = now_utc()
-    local source = generated and "generated" or (is_plugin_managed(luaskill_sid) and "plugin" or "provided")
+    local source = generated and "generated" or (is_host_managed(luaskill_sid) and "host" or "provided")
     local err = upsert_workmem(luaskill_sid, source, updated_at)
     if err then
         return render_error("SQLITE_ERROR", err)
@@ -756,9 +762,9 @@ local function action_task_create(request)
         shorten(detail, 500),
     }
 
-    if is_plugin_managed(luaskill_sid) then
+    if is_host_managed(luaskill_sid) then
         lines[#lines + 1] = ""
-        lines[#lines + 1] = render_plugin_hint()
+        lines[#lines + 1] = render_host_managed_hint()
     elseif generated then
         lines[#lines + 1] = ""
         lines[#lines + 1] = render_persistent_setup_hint(luaskill_sid)
@@ -1250,8 +1256,8 @@ local function action_task_close(request)
     end
 
     local closing_note = "The LUASKILL_SID remains valid as a long-lived project rule value. Reuse it for future tasks if it is saved in `AGENTS.md` or `CLAUDE.md`."
-    if is_plugin_managed(luaskill_sid) then
-        closing_note = "Plugin-managed mode remains active through the host or plugin. Do not ask for, print, or persist the raw LUASKILL_SID."
+    if is_host_managed(luaskill_sid) then
+        closing_note = "Host-managed mode remains active through the host bridge. Do not ask for, print, or persist the raw LUASKILL_SID."
     end
 
     return table.concat({

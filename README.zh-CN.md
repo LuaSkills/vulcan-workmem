@@ -188,7 +188,7 @@ python .\scripts\package_skill.py --emit-source-yaml
 ```powershell
 python .\scripts\validate_skill.py
 python .\scripts\package_skill.py --emit-source-yaml
-.\scripts\tag_release.ps1 0.1.1
+.\scripts\tag_release.ps1 0.1.2
 ```
 
 Unix-like shell：
@@ -196,7 +196,7 @@ Unix-like shell：
 ```bash
 python ./scripts/validate_skill.py
 python ./scripts/package_skill.py --emit-source-yaml
-./scripts/tag_release.sh 0.1.1
+./scripts/tag_release.sh 0.1.2
 ```
 
 ## 一句话总结
